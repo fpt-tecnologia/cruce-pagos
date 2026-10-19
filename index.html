@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cruce de Pagos FPT</title>
+<link rel="icon" id="ico">
+<style>
+  :root{
+    --brand:#7B2F8E; --brand-soft:#f3e8f5; --bg:#f6f5f8; --card:#ffffff; --ink:#1d1b22; --muted:#6b6675;
+    --line:#e4e0ea; --ok:#1f7a4d; --ok-soft:#e5f4ec; --warn:#9a5b00; --warn-soft:#fdf1dc; --err:#b42318;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --brand:#c58bd6; --brand-soft:#2e2234; --bg:#141217; --card:#1d1a22; --ink:#ece9f1; --muted:#a29cac;
+      --line:#332e3a; --ok:#5fcf98; --ok-soft:#173326; --warn:#f0b35a; --warn-soft:#352812; --err:#ff8a80;
+    }
+  }
+  :root[data-theme="dark"]{
+    --brand:#c58bd6; --brand-soft:#2e2234; --bg:#141217; --card:#1d1a22; --ink:#ece9f1; --muted:#a29cac;
+    --line:#332e3a; --ok:#5fcf98; --ok-soft:#173326; --warn:#f0b35a; --warn-soft:#352812; --err:#ff8a80;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{background:var(--card);border-bottom:1px solid var(--line)}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+  .top{display:flex;align-items:center;gap:12px;padding:14px 0}
+  .top .logo{flex:none}
+  .top h1{font-size:19px;margin:0}
+  .top p{margin:0;color:var(--muted);font-size:13px}
+  main{padding:22px 0 40px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:720px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;cursor:pointer;transition:.15s;background:var(--card)}
+  .drop:hover,.drop.over{border-color:var(--brand);background:var(--brand-soft)}
+  .drop.listo{border-style:solid;border-color:var(--ok);background:var(--ok-soft)}
+  .drop h3{margin:0 0 4px;font-size:15px}
+  .drop .hint{color:var(--muted);font-size:13px}
+  .drop .archivo{margin-top:8px;font-weight:600;word-break:break-all}
+  .drop input{display:none}
+  .acciones{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:16px 0}
+  button{font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:9px 14px;cursor:pointer}
+  button.prim{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+  :root[data-theme="dark"] button.prim{color:#1d1a22}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) button.prim{color:#1d1a22}}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .estado{color:var(--muted);font-size:14px}
+  .barra{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:8px;display:none}
+  .barra i{display:block;height:100%;width:0;background:var(--brand);transition:width .2s}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:6px 0 16px}
+  @media (max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .kpi b{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+  .kpi span{color:var(--muted);font-size:13px}
+  .kpi.dest b{color:var(--brand)}
+  .filtros{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .filtros input[type=search]{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);min-width:220px;flex:1}
+  .tabla{overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--card);max-height:560px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+  th{position:sticky;top:0;background:var(--card);font-weight:600;color:var(--muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.02em}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.fac{font-weight:600;font-family:ui-monospace,Consolas,monospace}
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;background:var(--brand-soft)}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)}
+  .pill.warn{background:var(--warn-soft);color:var(--warn)}
+  .nota{color:var(--muted);font-size:13px;margin-top:8px}
+  .aviso{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13.5px;margin:8px 0}
+  .error{color:var(--err)}
+  #resultado{display:none}
+  footer{color:var(--muted);font-size:13px;text-align:center;padding:20px 0 30px}
+  .privado{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--muted);margin-top:12px}
+</style>
+</head>
+<body>
+<header><div class="wrap top">
+  <svg class="logo" viewBox="0 0 40 40" width="40" height="40" aria-label="FPT"><circle cx="20" cy="20" r="20" fill="#7B2F8E"/><text x="20" y="25" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="system-ui,sans-serif">FPT</text></svg>
+  <div><h1>Cruce de Pagos</h1><p>Digital Payments (Zenoti) vs Reporte bancario · facturas para constancias.fpt.com.mx</p></div>
+</div></header>
+
+<main class="wrap">
+  <div class="grid">
+    <label class="drop" id="dropDP">
+      <input type="file" accept=".xlsx" id="fileDP">
+      <h3>1. Digital Payments</h3>
+      <div class="hint">Excel de Zenoti · se usa <b>Transaction#</b> (col. E) e <b>Invoice No</b> (col. B)</div>
+      <div class="archivo" id="nomDP">Arrastra o haz clic para elegir</div>
+    </label>
+    <label class="drop" id="dropBanco">
+      <input type="file" accept=".xlsx" id="fileBanco">
+      <h3>2. Reporte bancario</h3>
+      <div class="hint">Excel del banco · se usa <b>ID TRANS</b> (col. M) de todas las hojas</div>
+      <div class="archivo" id="nomBanco">Arrastra o haz clic para elegir</div>
+    </label>
+  </div>
+  <div class="privado">🔒 <span>Los archivos se procesan en tu navegador. No se suben a ningún servidor.</span></div>
+
+  <div class="acciones">
+    <button class="prim" id="btnCruzar" disabled>Cruzar reportes</button>
+    <span class="estado" id="estado"></span>
+  </div>
+  <div class="barra" id="barra"><i></i></div>
+
+  <section id="resultado">
+    <div class="kpis">
+      <div class="kpi"><b id="kDP">0</b><span>Transacciones en Digital Payments</span></div>
+      <div class="kpi"><b id="kBanco">0</b><span>ID TRANS en el banco</span></div>
+      <div class="kpi"><b id="kCoinc">0</b><span>Coincidencias</span></div>
+      <div class="kpi dest"><b id="kFact">0</b><span>Facturas únicas</span></div>
+    </div>
+    <div id="hojas" class="nota"></div>
+
+    <div class="filtros">
+      <label id="lblPagados"><input type="checkbox" id="soloPagados"> Solo cobrados en banco (ST 00)</label>
+      <input type="search" id="buscar" placeholder="Buscar factura, socio o club">
+    </div>
+    <div class="acciones" id="copiar"></div>
+    <div class="tabla"><table>
+      <thead><tr><th>Invoice No</th><th>Socio</th><th>Club</th><th>Fecha</th><th>Total</th><th>Estatus Zenoti</th><th>ST banco</th><th>Hoja banco</th></tr></thead>
+      <tbody id="filas"></tbody>
+    </table></div>
+    <div class="nota" id="notaTabla"></div>
+  </section>
+</main>
+<footer>Creado por Jair Betancourt</footer>
+
+<script id="codigoWorker" type="text/plain">
+// ---------- Lector de .xlsx sin librerías (ZIP + XML) ----------
+const td = new TextDecoder();
+function u16(d,o){return d[o]|(d[o+1]<<8)}
+function u32(d,o){return (d[o]|(d[o+1]<<8)|(d[o+2]<<16)|(d[o+3]<<24))>>>0}
+async function leerZip(buf){
+  const d=new Uint8Array(buf); let e=-1;
+  for(let i=d.length-22;i>=Math.max(0,d.length-70000);i--){ if(u32(d,i)===0x06054b50){e=i;break} }
+  if(e<0) throw new Error('El archivo no es un Excel .xlsx válido.');
+  const n=u16(d,e+10); let p=u32(d,e+16); const ent={};
+  for(let k=0;k<n;k++){
+    if(u32(d,p)!==0x02014b50) break;
+    const met=u16(d,p+10), cs=u32(d,p+20), nl=u16(d,p+28), xl=u16(d,p+30), cl=u16(d,p+32), lo=u32(d,p+42);
+    const nombre=td.decode(d.subarray(p+46,p+46+nl));
+    ent[nombre]={met,cs,lo}; p+=46+nl+xl+cl;
+  }
+  return {d,ent};
+}
+async function texto(zip,nombre){
+  const e=zip.ent[nombre]; if(!e) return null;
+  const d=zip.d, o=e.lo, ini=o+30+u16(d,o+26)+u16(d,o+28), datos=d.subarray(ini,ini+e.cs);
+  if(e.met===0) return td.decode(datos);
+  const s=new Blob([datos]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return await new Response(s).text();
+}
+function desc(s){return s.indexOf('&')<0?s:s.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(m,n)=>String.fromCharCode(+n)).replace(/&amp;/g,'&')}
+function textoSi(x){x=x.replace(/<rPh\b[\s\S]*?<\/rPh>/g,'');let r='',m;const re=/<t\b[^>]*>([\s\S]*?)<\/t>/g;while((m=re.exec(x)))r+=m[1];return desc(r)}
+async function libro(buf){
+  const zip=await leerZip(buf);
+  const sstx=await texto(zip,'xl/sharedStrings.xml'); const sst=[];
+  if(sstx){const re=/<si>([\s\S]*?)<\/si>|<si\/>/g;let m;while((m=re.exec(sstx)))sst.push(m[1]?textoSi(m[1]):'')}
+  const wb=await texto(zip,'xl/workbook.xml'), rels=await texto(zip,'xl/_rels/workbook.xml.rels')||'';
+  const destino={};let m;const rr=/<Relationship\b[^>]*>/g;
+  while((m=rr.exec(rels))){const id=(m[0].match(/Id="([^"]+)"/)||[])[1],t=(m[0].match(/Target="([^"]+)"/)||[])[1];if(id&&t)destino[id]=t.startsWith('/')?t.slice(1):'xl/'+t.replace(/^\.\//,'')}
+  const hojas=[];const rs=/<sheet\b[^>]*>/g;
+  while((m=rs.exec(wb))){const nom=desc((m[0].match(/name="([^"]*)"/)||[])[1]||''),id=(m[0].match(/r:id="([^"]+)"/)||m[0].match(/\bid="([^"]+)"/)||[])[1];if(destino[id])hojas.push({nombre:nom,ruta:destino[id]})}
+  return {zip,sst,hojas};
+}
+function colNum(l){let n=0;for(const c of l)n=n*26+c.charCodeAt(0)-64;return n-1}
+// Recorre una hoja; header(fila->bool) decide la fila de encabezados; regresa filas con columnas pedidas
+async function filasHoja(lib,hoja,elegirCols,alAvance){
+  const x=await texto(lib.zip,hoja.ruta); if(!x) return {cols:null,filas:[]};
+  const re=/<c r="([A-Z]+)(\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
+  let m,cols=null,quiero=null,filaAct=-1,actual=null,primeras={};const filas=[];let cont=0;
+  const valor=(atr,cuerpo)=>{ if(cuerpo==null) return '';
+    const t=(atr.match(/t="([^"]+)"/)||[])[1]; const v=(cuerpo.match(/<v>([\s\S]*?)<\/v>/)||[])[1];
+    if(t==='s') return lib.sst[+v]??''; if(t==='inlineStr') return textoSi(cuerpo); if(v==null) return ''; return desc(v)};
+  const cerrar=()=>{ if(actual&&cols) filas.push(actual); actual=null };
+  while((m=re.exec(x))){
+    const c=colNum(m[1]), f=+m[2];
+    if(!cols){
+      if(f>12){ cols=elegirCols(primeras); if(!cols||cols.clave==null) return {cols:null,filas:[]};
+        quiero=new Set(Object.entries(cols).filter(([k,v])=>k!=='__fila'&&v!=null).map(([k,v])=>v));
+        for(const g of Object.keys(primeras).map(Number).sort((a,b)=>a-b)) if(g>cols.__fila) filas.push(primeras[g]); }
+      else { (primeras[f]=primeras[f]||{})[c]=valor(m[3],m[4]); continue; }
+    }
+    if(f!==filaAct){ cerrar(); filaAct=f; actual={}; if(++cont%20000===0&&alAvance) alAvance(re.lastIndex/x.length) }
+    if(quiero.has(c)) actual[c]=valor(m[3],m[4]);
+  }
+  cerrar();
+  if(!cols){ cols=elegirCols(primeras); if(!cols||cols.clave==null) return {cols:null,filas:[]}; // hoja chica
+    const hf=cols.__fila; for(const f of Object.keys(primeras).map(Number).sort((a,b)=>a-b)) if(f>hf) filas.push(primeras[f]); }
+  return {cols,filas};
+}
+function buscaEncabezado(primeras,requerida,extras,colDefecto){
+  const norm=s=>String(s).trim().toUpperCase().replace(/\s+/g,' ');
+  for(const f of Object.keys(primeras).map(Number).sort((a,b)=>a-b)){
+    const fila=primeras[f]; let col=null;
+    for(const c in fila) if(norm(fila[c])===requerida) col=+c;
+    if(col!=null){ const r={__fila:f,clave:col}; for(const k in extras){ r[k]=null; for(const c in fila) if(extras[k].includes(norm(fila[c]))) r[k]=+c } return r }
+  }
+  return colDefecto;
+}
+function fechaExcel(v){ if(/^\d+(\.\d+)?$/.test(v)){const d=new Date(Math.round((+v-25569)*86400000));return d.toISOString().slice(0,10).split('-').reverse().join('/')} return v }
+
+onmessage=async(ev)=>{
+  try{
+    const {dp,banco}=ev.data; const av=(etapa,p)=>postMessage({tipo:'avance',etapa,p});
+    av('Leyendo Digital Payments…',0.02);
+    const lDP=await libro(dp); const mapa=new Map(); let totalDP=0;
+    for(const h of lDP.hojas){
+      const r=await filasHoja(lDP,h,pr=>buscaEncabezado(pr,'TRANSACTION#',{inv:['INVOICE NO','INVOICE NO.'],socio:['MEMBER NAME','GUEST NAME'],club:['CENTER NAME'],fecha:['TRANSACTION DATE'],total:['TOTAL'],estatus:['TRANSACTION STATUS']},null),p=>av('Leyendo Digital Payments…',0.05+p*0.25));
+      if(!r.cols) continue; const c=r.cols;
+      for(const f of r.filas){ const k=String(f[c.clave]||'').trim().toLowerCase(); if(!k) continue; totalDP++;
+        if(!mapa.has(k)) mapa.set(k,{inv:String(f[c.inv]??'').trim(),socio:f[c.socio]??'',club:f[c.club]??'',fecha:fechaExcel(String(f[c.fecha]??'')),total:f[c.total]??'',estatus:f[c.estatus]??''}); }
+    }
+    if(!totalDP) throw new Error('No encontré la columna "Transaction#" en Digital Payments.');
+    av('Leyendo reporte bancario…',0.32);
+    const lB=await libro(banco); const porFactura=new Map(); let totalB=0, coinc=0; const resumenHojas=[];
+    for(let i=0;i<lB.hojas.length;i++){ const h=lB.hojas[i];
+      const base=0.35+0.6*i/lB.hojas.length, paso=0.6/lB.hojas.length;
+      av(`Reporte bancario: hoja ${h.nombre}…`,base);
+      const r=await filasHoja(lB,h,pr=>buscaEncabezado(pr,'ID TRANS',{st:['ST'],importe:['IMPORTE']},null),p=>av(`Reporte bancario: hoja ${h.nombre}…`,base+p*paso));
+      if(!r.cols) continue; let n=0,hh=0;
+      for(const f of r.filas){ const k=String(f[r.cols.clave]||'').trim().toLowerCase(); if(!k) continue; n++; totalB++;
+        const d=mapa.get(k); if(!d) continue; hh++; coinc++;
+        const key=d.inv||k; let reg=porFactura.get(key);
+        if(!reg){reg={...d,inv:key,st:new Set(),hojas:new Set()};porFactura.set(key,reg)}
+        const st=r.cols.st!=null?String(f[r.cols.st]??'').trim():''; if(st)reg.st.add(st); reg.hojas.add(h.nombre); }
+      resumenHojas.push({hoja:h.nombre,ids:n,coincidencias:hh,st:r.cols.st!=null});
+    }
+    if(!totalB) throw new Error('No encontré la columna "ID TRANS" en el reporte bancario.');
+    const salida=[...porFactura.values()].map(r=>({...r,st:[...r.st].sort(),hojas:[...r.hojas]}));
+    postMessage({tipo:'listo',totalDP,totalB,coinc,salida,resumenHojas});
+  }catch(e){ postMessage({tipo:'error',msg:e.message||String(e)}) }
+};
+</script>
+
+<script>
+const $=id=>document.getElementById(id);
+$('ico').href='data:image/svg+xml,'+encodeURIComponent(document.querySelector('svg.logo').outerHTML.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"'));
+const archivos={dp:null,banco:null};
+let datos=[], hayST=false;
+const MAX_LOTE=2500;
+
+function prepararDrop(drop,input,clave,etiqueta){
+  input.addEventListener('change',()=>elegir(input.files[0]));
+  ['dragenter','dragover'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add('over')}));
+  ['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('over')}));
+  drop.addEventListener('drop',e=>{if(e.dataTransfer.files[0])elegir(e.dataTransfer.files[0])});
+  function elegir(f){ if(!f) return; archivos[clave]=f; etiqueta.textContent=`${f.name} · ${(f.size/1048576).toFixed(1)} MB`; drop.classList.add('listo'); $('btnCruzar').disabled=!(archivos.dp&&archivos.banco) }
+}
+prepararDrop($('dropDP'),$('fileDP'),'dp',$('nomDP'));
+prepararDrop($('dropBanco'),$('fileBanco'),'banco',$('nomBanco'));
+
+const fmt=n=>Number(n).toLocaleString('es-MX');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pagado=r=>r.st.includes('00');
+
+$('btnCruzar').addEventListener('click',async()=>{
+  if(!('DecompressionStream' in window)){ $('estado').innerHTML='<span class="error">Usa Chrome o Edge actualizado.</span>'; return }
+  $('btnCruzar').disabled=true; $('resultado').style.display='none'; $('barra').style.display='block';
+  const t0=performance.now();
+  const w=new Worker(URL.createObjectURL(new Blob([$('codigoWorker').textContent],{type:'text/javascript'})));
+  w.onmessage=e=>{const m=e.data;
+    if(m.tipo==='avance'){ $('estado').textContent=m.etapa; $('barra').firstElementChild.style.width=Math.round(m.p*100)+'%' }
+    else if(m.tipo==='error'){ $('estado').innerHTML='<span class="error">'+esc(m.msg)+'</span>'; $('barra').style.display='none'; $('btnCruzar').disabled=false; w.terminate() }
+    else if(m.tipo==='listo'){ w.terminate(); $('barra').style.display='none'; $('btnCruzar').disabled=false;
+      $('estado').textContent=`Listo en ${((performance.now()-t0)/1000).toFixed(0)} s`; mostrar(m) }
+  };
+  $('estado').textContent='Cargando archivos…';
+  const [dp,banco]=await Promise.all([archivos.dp.arrayBuffer(),archivos.banco.arrayBuffer()]);
+  w.postMessage({dp,banco},[dp,banco]);
+});
+
+function mostrar(m){
+  datos=m.salida.sort((a,b)=>a.inv.localeCompare(b.inv)); hayST=m.resumenHojas.some(h=>h.st);
+  $('kDP').textContent=fmt(m.totalDP); $('kBanco').textContent=fmt(m.totalB); $('kCoinc').textContent=fmt(m.coinc); $('kFact').textContent=fmt(datos.length);
+  $('hojas').textContent='Hojas del banco revisadas: '+m.resumenHojas.map(h=>`${h.hoja} (${fmt(h.coincidencias)} de ${fmt(h.ids)})`).join(' · ');
+  $('lblPagados').style.display=hayST?'':'none';
+  $('resultado').style.display='block'; pintar();
+}
+function visibles(){
+  const q=$('buscar').value.trim().toLowerCase(), sp=$('soloPagados').checked;
+  return datos.filter(r=>(!sp||pagado(r))&&(!q||(r.inv+' '+r.socio+' '+r.club).toLowerCase().includes(q)));
+}
+function pintar(){
+  const v=visibles(), mostrarN=Math.min(v.length,1000);
+  $('filas').innerHTML=v.slice(0,mostrarN).map(r=>`<tr><td class="fac">${esc(r.inv)}</td><td>${esc(r.socio)}</td><td>${esc(r.club)}</td><td>${esc(r.fecha)}</td><td class="num">${esc(r.total)}</td><td>${esc(r.estatus)}</td><td>${r.st.map(s=>`<span class="pill ${s==='00'?'ok':'warn'}">${esc(s)}</span>`).join(' ')}</td><td>${esc(r.hojas.join(', '))}</td></tr>`).join('');
+  $('notaTabla').textContent=v.length>mostrarN?`Se muestran ${fmt(mostrarN)} de ${fmt(v.length)}; copiar y descargar incluyen todas.`:`${fmt(v.length)} facturas.`;
+  const partes=Math.ceil(v.length/MAX_LOTE); let h='';
+  if(partes<=1) h=`<button class="prim" data-p="0">Copiar ${fmt(v.length)} facturas</button>`;
+  else for(let i=0;i<partes;i++) h+=`<button class="prim" data-p="${i}">Copiar parte ${i+1} de ${partes} (${fmt(Math.min(MAX_LOTE,v.length-i*MAX_LOTE))})</button>`;
+  h+=`<button id="btnCSV">Descargar Excel (CSV)</button>`;
+  if(partes>1) h+=`<span class="nota">constancias.fpt.com.mx acepta hasta 2,500 por lote.</span>`;
+  $('copiar').innerHTML=v.length?h:'';
+  $('copiar').querySelectorAll('[data-p]').forEach(b=>b.onclick=async()=>{
+    const i=+b.dataset.p, lista=v.slice(i*MAX_LOTE,(i+1)*MAX_LOTE).map(r=>r.inv).join('\n');
+    try{await navigator.clipboard.writeText(lista)}catch(e){const t=document.createElement('textarea');t.value=lista;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}
+    const o=b.textContent;b.textContent='¡Copiado! Pégalo en constancias.fpt.com.mx';setTimeout(()=>b.textContent=o,2500)});
+  const c=$('btnCSV'); if(c) c.onclick=()=>{
+    const enc=['Invoice No','Socio','Club','Fecha','Total','Estatus Zenoti','ST banco','Hoja banco'];
+    const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
+    const csv='﻿'+[enc.map(q).join(','),...v.map(r=>[r.inv,r.socio,r.club,r.fecha,r.total,r.estatus,r.st.join(' '),r.hojas.join(' ')].map(q).join(','))].join('\r\n');
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='facturas_coincidentes.csv';a.click()};
+}
+$('buscar').addEventListener('input',pintar); $('soloPagados').addEventListener('change',pintar);
+</script>
+</body>
+</html>
